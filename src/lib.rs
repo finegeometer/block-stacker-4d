@@ -270,6 +270,10 @@ impl State {
                     }]
                 };
                 model.world.render(model.player.projection_matrix(), views);
+
+                if let VrStatus::Presenting(display) = &model.vr_status {
+                    display.submit_frame();
+                }
             }
         } else {
             model.fps = Some(fps::FrameCounter::new(timestamp))
