@@ -1,0 +1,15 @@
+{
+  "name": "block-stacker-4d",
+  "collaborators": [
+    "finegeometer <finegeometer@gmail.com>"
+  ],
+  "version": "0.0.0",
+  "files": [
+    "block_stacker_4d_bg.wasm",
+    "block_stacker_4d.js",
+    "block_stacker_4d.d.ts"
+  ],
+  "module": "block_stacker_4d.js",
+  "types": "block_stacker_4d.d.ts",
+  "sideEffects": "false"
+}
