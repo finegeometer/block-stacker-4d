@@ -184,7 +184,7 @@ impl Renderer {
             // x y dpth hmg -> x y z hmg
             let three_camera_inverse = view.three_camera.try_inverse().unwrap_throw();
             let tiny_three_camera_fleeing_step_in_three_screen_coordinates =
-                (three_camera_inverse * nalgebra::Vector4::new(0., 0., 1., 0.)).normalize() * 1e-6;
+                (three_camera_inverse * nalgebra::Vector4::new(0., 0., 1., 0.)).normalize() * 1e-5;
             let tiny_three_camera_fleeing_step_in_world_coordinates = four_camera_inverse
                 * tiny_three_camera_fleeing_step_in_three_screen_coordinates.insert_row(3, 0.);
 

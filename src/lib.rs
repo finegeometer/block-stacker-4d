@@ -50,6 +50,7 @@ struct Player {
 enum Msg {
     Click,
     MouseMove([i32; 2]),
+    MouseWheel(f64),
     KeyDown(String),
     KeyUp(String),
 
@@ -89,10 +90,14 @@ impl State {
                 model.vr_status = VrStatus::NotSupported;
             }
 
-            out.event_listener(&model.canvas, "mousedown", move |_| Msg::Click);
+            out.event_listener(&model.canvas, "mousedown", |_| Msg::Click);
             out.event_listener(&model.canvas, "mousemove", |evt| {
                 let evt = evt.dyn_into::<web_sys::MouseEvent>().unwrap_throw();
                 Msg::MouseMove([evt.movement_x(), evt.movement_y()])
+            });
+            out.event_listener(&model.canvas, "wheel", |evt| {
+                let evt = evt.dyn_into::<web_sys::WheelEvent>().unwrap_throw();
+                Msg::MouseWheel(evt.delta_y())
             });
             out.event_listener(&model.document, "keydown", |evt| {
                 let evt = evt.dyn_into::<web_sys::KeyboardEvent>().unwrap_throw();
@@ -141,6 +146,16 @@ impl State {
 
                     model.vr_status = VrStatus::RequestedPresentation(display.clone());
                 }
+
+                let cast_result =
+                    model
+                        .world
+                        .raycast(model.player.position, model.player.direction(), 5.);
+
+                web_sys::console::log_1(&format!("{:?}", cast_result).into());
+                if let (Some(block), _) = cast_result {
+                    model.world.set_block(block, Some([0x80, 0x20, 0x20]));
+                }
             }
             Msg::KeyDown(k) => {
                 model.keys.insert(k.to_lowercase());
@@ -153,6 +168,13 @@ impl State {
                     model.player.horizontal_orientation = nalgebra::UnitQuaternion::new(
                         nalgebra::Vector3::new(y as f32 * 3e-3, -x as f32 * 3e-3, 0.),
                     ) * model.player.horizontal_orientation;
+                }
+            }
+            Msg::MouseWheel(y) => {
+                if model.document.pointer_lock_element().is_some() {
+                    model.player.vertical_angle = (model.player.vertical_angle + 0.1 * y as f32)
+                        .max(-std::f32::consts::FRAC_PI_2)
+                        .min(std::f32::consts::FRAC_PI_2);
                 }
             }
 
@@ -364,6 +386,23 @@ impl Player {
         self.position += direction;
     }
 
+    fn rotation_matrix(&self) -> nalgebra::Matrix4<f32> {
+        let vertical_rotation: nalgebra::Matrix4<f32> = {
+            let (s, c) = self.vertical_angle.sin_cos();
+            let mut out = nalgebra::Matrix4::identity();
+            out[(2, 2)] = c;
+            out[(2, 3)] = s;
+            out[(3, 2)] = -s;
+            out[(3, 3)] = c;
+            out
+        };
+
+        let horizontal_rotation: nalgebra::Matrix4<f32> =
+            self.horizontal_orientation.to_homogeneous();
+
+        vertical_rotation * horizontal_rotation
+    }
+
     fn projection_matrix(&self) -> nalgebra::Matrix5<f32> {
         // Project to screen-depth space, with y = up, w = depth coordinate, v = homogeneous coordinate. Infinity projects to w=0.
         #[rustfmt::skip]
@@ -375,27 +414,14 @@ impl Player {
             0., 0., 1., 0., 0.,
         );
 
-        // rotate so that camera points along z.
-        let vertical_rotation: nalgebra::Matrix5<f32> = {
-            let (s, c) = self.vertical_angle.sin_cos();
-            let mut out = nalgebra::Matrix5::identity();
-            out[(2, 2)] = c;
-            out[(2, 3)] = s;
-            out[(3, 2)] = -s;
-            out[(3, 3)] = c;
-            out
-        };
-
-        // rotate so that camera points along wz plane.
-        let horizontal_rotation: nalgebra::Matrix5<f32> = self
-            .horizontal_orientation
-            .to_homogeneous()
-            .to_homogeneous();
-
         // move everything so that camera is at origin.
         let translation: nalgebra::Matrix5<f32> =
             nalgebra::Translation::from(-self.position).to_homogeneous();
 
-        projection_matrix * vertical_rotation * horizontal_rotation * translation
+        projection_matrix * self.rotation_matrix().to_homogeneous() * translation
+    }
+
+    fn direction(&self) -> nalgebra::Vector4<f32> {
+        self.rotation_matrix().try_inverse().unwrap_throw() * nalgebra::Vector4::new(0., 0., 1., 0.)
     }
 }

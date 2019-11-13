@@ -40,6 +40,8 @@ bool get_block(ivec4 pos, out vec4 col) {{
 //     Set col = the color of the surface at the intersection.
 //     Return true;
 // If there is no intersection, return false.
+
+// Note: A translation of this into Rust is in `world.rs`.
 bool intersect_scene(vec4 start, vec4 end, out float t, out vec4 col) {{
 
     float t_max = render_distance / length(end - start);
@@ -89,7 +91,7 @@ void main() {{
 
     float t;
     if (intersect_scene(four_camera_pos, adjusted_pos, t, color)) {{
-        if (t < 0.999) {{
+        if (t < 0.993) {{
             // Occluded
             discard;
         }}

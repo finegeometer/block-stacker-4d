@@ -185,4 +185,71 @@ impl World {
         }
         self.renderer.render(four_camera, views);
     }
+
+    // Note: A translation of this to GLSL is in the fragment shader.
+    pub fn raycast(
+        &self,
+        pos: nalgebra::Vector4<f32>,
+        dir: nalgebra::Vector4<f32>,
+        ray_distance: f32,
+    ) -> (Option<[i32; 4]>, Option<[i32; 4]>) {
+        let t_max = ray_distance / dir.norm();
+
+        let t_steps = {
+            let mut out: [f32; 4] = dir.into();
+            for thing in out.iter_mut() {
+                *thing = thing.recip().abs();
+            }
+            out
+        };
+
+        let mut next_ts = {
+            let mut out = t_steps;
+            for i in 0..4 {
+                let tmp = -pos[i] * dir[i].signum();
+                out[i] *= tmp - tmp.floor();
+            }
+            out
+        };
+
+        let block_steps = {
+            let mut out = [0; 4];
+            for i in 0..4 {
+                out[i] = dir[i].signum() as i32;
+            }
+            out
+        };
+
+        let mut current_block = None;
+        let mut next_block = {
+            let mut out = [0; 4];
+            for i in 0..4 {
+                out[i] = pos[i].floor() as i32;
+            }
+            out
+        };
+
+        let mut t = 0.0;
+
+        while t < t_max {
+            if self.get_block(next_block).is_some() {
+                return (current_block, Some(next_block));
+            }
+            current_block = Some(next_block);
+
+            let i: usize = next_ts
+                .iter()
+                .filter(|x| x.is_finite())
+                .enumerate()
+                .min_by(|(_, t1), (_, t2)| t1.partial_cmp(t2).expect("NAN"))
+                .unwrap()
+                .0;
+
+            next_block[i] += block_steps[i];
+            t = next_ts[i];
+            next_ts[i] += t_steps[i];
+        }
+
+        (None, None)
+    }
 }
