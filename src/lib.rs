@@ -60,8 +60,9 @@ enum Msg {
 
 enum VrStatus {
     Searching,
-    NotSupported,
-    NotFound,
+    NotFound {
+        three_camera_rot: nalgebra::UnitQuaternion<f32>,
+    },
     Known(web_sys::VrDisplay),
     RequestedPresentation(web_sys::VrDisplay),
     Presenting(web_sys::VrDisplay),
@@ -87,7 +88,9 @@ impl State {
                     &"WebVR is not supported by this browser, on this computer.".into(),
                 );
 
-                model.vr_status = VrStatus::NotSupported;
+                model.vr_status = VrStatus::NotFound {
+                    three_camera_rot: nalgebra::UnitQuaternion::identity(),
+                };
             }
 
             out.event_listener(&model.canvas, "mousedown", |_| Msg::Click);
@@ -180,7 +183,9 @@ impl State {
 
             Msg::GotVRDisplays(vr_displays) => {
                 if vr_displays.length() == 0 {
-                    model.vr_status = VrStatus::NotFound;
+                    model.vr_status = VrStatus::NotFound {
+                        three_camera_rot: nalgebra::UnitQuaternion::identity(),
+                    };
                 } else {
                     model.vr_status = VrStatus::Known(vr_displays.get(0).dyn_into().unwrap_throw());
                 }
@@ -205,7 +210,11 @@ impl State {
 
         if let Some(fps) = &mut model.fps {
             let dt = fps.frame(timestamp);
-            model.info_box.set_inner_text(&format!("{}", fps));
+            model.info_box.set_inner_text(&format!(
+                "{}\n\n{:?}",
+                fps,
+                model.player.position.as_slice()
+            ));
 
             {
                 let mut movement_vector = nalgebra::Vector4::zeros();
@@ -233,15 +242,40 @@ impl State {
                 if model.keys.contains("e") {
                     movement_vector -= nalgebra::Vector4::y();
                 }
-                model.player.r#move(movement_vector * dt as f32);
+                model
+                    .player
+                    .r#move(movement_vector * dt as f32, &model.world);
+            }
+
+            if let VrStatus::NotFound { three_camera_rot } = &mut model.vr_status {
+                if model.keys.contains("arrowdown") {
+                    *three_camera_rot =
+                        nalgebra::UnitQuaternion::new(nalgebra::Vector3::new(-0.01, 0.0, 0.0f32))
+                            * *three_camera_rot;
+                }
+                if model.keys.contains("arrowup") {
+                    *three_camera_rot =
+                        nalgebra::UnitQuaternion::new(nalgebra::Vector3::new(0.01, 0.0, 0.0f32))
+                            * *three_camera_rot;
+                }
+                if model.keys.contains("arrowright") {
+                    *three_camera_rot =
+                        nalgebra::UnitQuaternion::new(nalgebra::Vector3::new(0.0, -0.01, 0.0f32))
+                            * *three_camera_rot;
+                }
+                if model.keys.contains("arrowleft") {
+                    *three_camera_rot =
+                        nalgebra::UnitQuaternion::new(nalgebra::Vector3::new(0.0, 0.01, 0.0f32))
+                            * *three_camera_rot;
+                }
             }
 
             {
-                let views = if let VrStatus::Presenting(display) = &model.vr_status {
+                if let VrStatus::Presenting(display) = &model.vr_status {
                     let frame_data = web_sys::VrFrameData::new().unwrap_throw();
                     display.get_frame_data(&frame_data);
 
-                    vec![
+                    let views = vec![
                         world::View {
                             three_camera: nalgebra::MatrixSlice4::from_slice(
                                 &frame_data.left_projection_matrix().unwrap_throw(),
@@ -266,9 +300,10 @@ impl State {
                                 model.canvas.height() as i32,
                             ],
                         },
-                    ]
-                } else {
-                    vec![world::View {
+                    ];
+                    model.world.render(model.player.projection_matrix(), views);
+                } else if let VrStatus::NotFound { three_camera_rot } = &model.vr_status {
+                    let views = vec![world::View {
                         three_camera: nalgebra::Matrix4::new(
                             1.,
                             0.,
@@ -286,12 +321,12 @@ impl State {
                             0.,
                             -1.,
                             3.,
-                        ),
+                        ) * three_camera_rot.to_homogeneous(),
                         viewport_start: [0, 0],
                         viewport_size: [model.canvas.width() as i32, model.canvas.height() as i32],
-                    }]
+                    }];
+                    model.world.render(model.player.projection_matrix(), views);
                 };
-                model.world.render(model.player.projection_matrix(), views);
 
                 if let VrStatus::Presenting(display) = &model.vr_status {
                     display.submit_frame();
@@ -348,7 +383,56 @@ impl Model {
             .dyn_into::<web_sys::WebGl2RenderingContext>()
             .unwrap_throw();
         let mut world = world::World::new(gl);
-        world.set_block([0, 0, 2, 0], Some([0x20, 0x80, 0x20]));
+
+        // for i in 0..=3 {
+        //     for j in 0..=3 {
+        //         for k in 0..=3 {
+        //             for l in 0..=2 {
+        //                 world.set_block(
+        //                     [i, j, k, l],
+        //                     Some([i as u8 * 0x3F, j as u8 * 0x3F, k as u8 * 0x3F]),
+        //                 )
+        //             }
+        //         }
+        //     }
+        // }
+        // world.set_block([1, 1, 2, 1], None);
+        // world.set_block([1, 2, 2, 1], None);
+        // world.set_block([1, 2, 1, 1], None);
+        // world.set_block([2, 2, 1, 1], None);
+        // world.set_block([2, 1, 1, 1], None);
+        // world.set_block([2, 1, 2, 1], None);
+
+        for i in 0..world::WORLD_SIZE {
+            for j in 0..world::WORLD_SIZE {
+                for k in 0..world::WORLD_SIZE {
+                    world.set_block([i as i32, j as i32, k as i32, 0], Some([0x50, 0xC0, 0x50]))
+                }
+            }
+        }
+
+        let mut tree = |[x, y, z]: [i32; 3]| {
+            for dx in -2..=2 {
+                for dy in -2..=2 {
+                    for dz in -2..=2 {
+                        if dx * dx + dy * dy + dz * dz < 7 {
+                            world.set_block([x + dx, y + dy, z + dz, 3], Some([0x20, 0xC0, 0x20]));
+                            world.set_block([x + dx, y + dy, z + dz, 4], Some([0x20, 0xC0, 0x20]));
+                        }
+                        if dx * dx + dy * dy + dz * dz < 3 {
+                            world.set_block([x + dx, y + dy, z + dz, 5], Some([0x20, 0xC0, 0x20]));
+                            world.set_block([x + dx, y + dy, z + dz, 6], Some([0x20, 0xC0, 0x20]));
+                        }
+                    }
+                }
+            }
+            for w in 1..=5 {
+                world.set_block([x, y, z, w], Some([0x80, 0x40, 0x00]));
+            }
+        };
+
+        tree([2, 2, 2]);
+        tree([5, 5, 5]);
 
         Self {
             animation_frame_closure: JsValue::undefined().into(),
@@ -370,20 +454,28 @@ impl Model {
 impl Player {
     fn new() -> Self {
         Self {
-            position: nalgebra::Vector4::new(0.5, 0.5, 0.5, 0.5),
+            position: nalgebra::Vector4::new(2.5, 1.5, 1.5, 1.5),
             horizontal_orientation: nalgebra::UnitQuaternion::identity(),
             vertical_angle: 0.0,
         }
     }
 
     // Direction is relative to player.
-    fn r#move(&mut self, mut direction: nalgebra::Vector4<f32>) {
+    fn r#move(&mut self, mut direction: nalgebra::Vector4<f32>, world: &world::World) {
         let mut horiz = direction.fixed_rows_mut::<nalgebra::U3>(0);
         horiz.copy_from(&(self.horizontal_orientation.conjugate() * horiz.clone_owned()));
 
         // direction now in world coordinates
 
-        self.position += direction;
+        let new_position = self.position + direction;
+
+        let mut new_position_integer = [0; 4];
+        for i in 0..4 {
+            new_position_integer[i] = new_position[i].floor() as i32;
+        }
+        if world.get_block(new_position_integer).is_none() {
+            self.position = new_position;
+        }
     }
 
     fn rotation_matrix(&self) -> nalgebra::Matrix4<f32> {

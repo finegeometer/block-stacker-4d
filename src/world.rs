@@ -1,7 +1,7 @@
 mod renderer;
 pub use renderer::View;
 
-const WORLD_SIZE: usize = 8;
+pub const WORLD_SIZE: usize = 8;
 
 type Block = Option<[u8; 3]>;
 

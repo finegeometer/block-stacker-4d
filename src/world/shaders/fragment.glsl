@@ -21,7 +21,7 @@ uniform float tiny_three_camera_fleeing_step_in_world_coordinates_b;
 uniform sampler2D world;
 
 int world_size = {};
-float render_distance = 8.0;
+float render_distance = 20.0;
 
 
 bool get_block(ivec4 pos, out vec4 col) {{
@@ -83,7 +83,13 @@ bool intersect_scene(vec4 start, vec4 end, out float t, out vec4 col) {{
 
 
 void main() {{
+    // limit render distance to infinity
     if (v_three_screen_pos.w < 0.0) {{
+        discard;
+    }}
+
+    // further limit it to render_distance
+    if (dot(vpos-four_camera_pos, vpos-four_camera_pos) >= render_distance * render_distance) {{
         discard;
     }}
 
