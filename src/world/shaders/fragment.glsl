@@ -101,8 +101,7 @@ void main() {{
             // Occluded
             discard;
         }}
-        color += 1.0;
-        color /= 2.0;
+        color = mix(color, vec4(1.0), 0.8);
     }} else {{
         // Sky
         color = vec4(0.8, 0.9, 1.0, 1.0);

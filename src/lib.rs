@@ -382,64 +382,13 @@ impl Model {
             .unwrap_throw()
             .dyn_into::<web_sys::WebGl2RenderingContext>()
             .unwrap_throw();
-        let mut world = world::World::new(gl);
-
-        // for i in 0..=3 {
-        //     for j in 0..=3 {
-        //         for k in 0..=3 {
-        //             for l in 0..=2 {
-        //                 world.set_block(
-        //                     [i, j, k, l],
-        //                     Some([i as u8 * 0x3F, j as u8 * 0x3F, k as u8 * 0x3F]),
-        //                 )
-        //             }
-        //         }
-        //     }
-        // }
-        // world.set_block([1, 1, 2, 1], None);
-        // world.set_block([1, 2, 2, 1], None);
-        // world.set_block([1, 2, 1, 1], None);
-        // world.set_block([2, 2, 1, 1], None);
-        // world.set_block([2, 1, 1, 1], None);
-        // world.set_block([2, 1, 2, 1], None);
-
-        for i in 0..world::WORLD_SIZE {
-            for j in 0..world::WORLD_SIZE {
-                for k in 0..world::WORLD_SIZE {
-                    world.set_block([i as i32, j as i32, k as i32, 0], Some([0x50, 0xC0, 0x50]))
-                }
-            }
-        }
-
-        let mut tree = |[x, y, z]: [i32; 3]| {
-            for dx in -2..=2 {
-                for dy in -2..=2 {
-                    for dz in -2..=2 {
-                        if dx * dx + dy * dy + dz * dz < 7 {
-                            world.set_block([x + dx, y + dy, z + dz, 3], Some([0x20, 0xC0, 0x20]));
-                            world.set_block([x + dx, y + dy, z + dz, 4], Some([0x20, 0xC0, 0x20]));
-                        }
-                        if dx * dx + dy * dy + dz * dz < 3 {
-                            world.set_block([x + dx, y + dy, z + dz, 5], Some([0x20, 0xC0, 0x20]));
-                            world.set_block([x + dx, y + dy, z + dz, 6], Some([0x20, 0xC0, 0x20]));
-                        }
-                    }
-                }
-            }
-            for w in 1..=5 {
-                world.set_block([x, y, z, w], Some([0x80, 0x40, 0x00]));
-            }
-        };
-
-        tree([2, 2, 2]);
-        tree([5, 5, 5]);
 
         Self {
             animation_frame_closure: JsValue::undefined().into(),
             fps: None,
             keys: HashSet::new(),
             vr_status: VrStatus::Searching,
-            world,
+            world: initial_world(gl),
 
             window,
             document,
@@ -454,7 +403,7 @@ impl Model {
 impl Player {
     fn new() -> Self {
         Self {
-            position: nalgebra::Vector4::new(2.5, 1.5, 1.5, 1.5),
+            position: nalgebra::Vector4::new(1.5, 1.5, 1.5, 1.5),
             horizontal_orientation: nalgebra::UnitQuaternion::identity(),
             vertical_angle: 0.0,
         }
@@ -516,4 +465,105 @@ impl Player {
     fn direction(&self) -> nalgebra::Vector4<f32> {
         self.rotation_matrix().try_inverse().unwrap_throw() * nalgebra::Vector4::new(0., 0., 1., 0.)
     }
+}
+
+fn initial_world(gl: web_sys::WebGl2RenderingContext) -> world::World {
+    let mut world = world::World::new(gl);
+
+    for i in 0..=5 {
+        for j in 0..=5 {
+            for k in 0..=5 {
+                for l in 0..=2 {
+                    world.set_block(
+                        [i, j, k, l],
+                        Some([i as u8 * 0x33, j as u8 * 0x33, k as u8 * 0x33]),
+                    )
+                }
+            }
+        }
+    }
+
+    for i in 1..=4 {
+        world.set_block([1, 1, i, 1], None);
+        world.set_block([1, i, 4, 1], None);
+        world.set_block([i, 4, 4, 1], None);
+        world.set_block([4, 4, i, 1], None);
+        world.set_block([4, i, 1, 1], None);
+        world.set_block([i, 1, 1, 1], None);
+    }
+
+    // // Ground
+
+    // for i in 0..world::WORLD_SIZE {
+    //     for j in 0..world::WORLD_SIZE {
+    //         for k in 0..world::WORLD_SIZE {
+    //             world.set_block([i as i32, j as i32, k as i32, 0], Some([0x50, 0xC0, 0x50]))
+    //         }
+    //     }
+    // }
+
+    // // Tree
+
+    // let mut tree = |[x, y, z]: [i32; 3]| {
+    //     for dx in -2..=2 {
+    //         for dy in -2..=2 {
+    //             for dz in -2..=2 {
+    //                 if dx * dx + dy * dy + dz * dz < 7 {
+    //                     world.set_block([x + dx, y + dy, z + dz, 3], Some([0x20, 0xC0, 0x20]));
+    //                     world.set_block([x + dx, y + dy, z + dz, 4], Some([0x20, 0xC0, 0x20]));
+    //                 }
+    //                 if dx * dx + dy * dy + dz * dz < 3 {
+    //                     world.set_block([x + dx, y + dy, z + dz, 5], Some([0x20, 0xC0, 0x20]));
+    //                     world.set_block([x + dx, y + dy, z + dz, 6], Some([0x20, 0xC0, 0x20]));
+    //                 }
+    //             }
+    //         }
+    //     }
+    //     for w in 1..=5 {
+    //         world.set_block([x, y, z, w], Some([0x80, 0x40, 0x00]));
+    //     }
+    // };
+
+    // tree([5, 5, 5]);
+    // tree([2, 5, 2]);
+    // tree([2, 2, 5]);
+
+    // // Path
+
+    // for i in 2..=5 {
+    //     world.set_block([2, 2, i, 0], Some([0x40, 0x40, 0x40]));
+
+    //     world.set_block([2, i, 2, 0], Some([0x40, 0x40, 0x40]));
+    //     world.set_block([i, 2, 2, 0], Some([0x40, 0x40, 0x40]));
+
+    //     world.set_block([5, i, 2, 0], Some([0x40, 0x40, 0x40]));
+    //     world.set_block([5, 5, i, 0], Some([0x40, 0x40, 0x40]));
+    // }
+
+    // // House
+
+    // for i in 0..=4 {
+    //     for j in 0..=4 {
+    //         for k in 3..=7 {
+    //             for l in 1..=3 {
+    //                 world.set_block([i, j, k, l], Some([0xC0, 0x00, 0x00]));
+    //             }
+    //         }
+    //     }
+    // }
+
+    // for i in 1..=3 {
+    //     for j in 1..=3 {
+    //         for k in 4..=6 {
+    //             for l in 1..=2 {
+    //                 world.set_block([i, j, k, l], None);
+    //             }
+    //         }
+    //     }
+    // }
+
+    // world.set_block([2, 2, 3, 1], None);
+    // world.set_block([2, 2, 3, 2], None);
+
+    world
 }
