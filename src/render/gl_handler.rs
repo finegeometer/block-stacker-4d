@@ -1,16 +1,11 @@
-use super::WORLD_SIZE;
+const WORLD_SIZE: usize = 8;
+
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 
 type GL = web_sys::WebGl2RenderingContext;
 
-pub struct View {
-    pub three_camera: nalgebra::Matrix4<f32>,
-    pub viewport_start: [i32; 2],
-    pub viewport_size: [i32; 2],
-}
-
-pub struct Renderer {
+pub struct GlHandler {
     gl: GL,
     program: web_sys::WebGlProgram,
     vao: web_sys::WebGlVertexArrayObject,
@@ -20,7 +15,7 @@ pub struct Renderer {
     num_triangles: usize,
 }
 
-impl Drop for Renderer {
+impl Drop for GlHandler {
     fn drop(&mut self) {
         self.gl.delete_program(Some(&self.program));
         self.gl.delete_vertex_array(Some(&self.vao));
@@ -29,7 +24,16 @@ impl Drop for Renderer {
     }
 }
 
-impl Renderer {
+pub struct Viewport {
+    pub start: [i32; 2],
+    pub size: [i32; 2],
+}
+pub struct Uniforms {
+    pub four_camera: nalgebra::Matrix5<f32>,
+    pub three_camera: nalgebra::Matrix4<f32>,
+}
+
+impl GlHandler {
     pub fn new(gl: GL) -> Self {
         // Multiplicative Blending
         gl.enable(GL::BLEND);
@@ -86,26 +90,6 @@ impl Renderer {
         }
     }
 
-    pub fn set_world_pixel(&self, coords: [i32; 4], color: [u8; 4]) {
-        if coords.iter().any(|&x| x < 0 || x >= WORLD_SIZE as i32) {
-            return;
-        }
-        self.gl.bind_texture(GL::TEXTURE_2D, Some(&self.world_tex));
-        self.gl
-            .tex_sub_image_2d_with_i32_and_i32_and_u32_and_type_and_opt_u8_array(
-                GL::TEXTURE_2D,
-                0,
-                coords[0] + WORLD_SIZE as i32 * coords[2],
-                coords[1] + WORLD_SIZE as i32 * coords[3],
-                1,
-                1,
-                GL::RGBA,
-                GL::UNSIGNED_BYTE,
-                Some(&color),
-            )
-            .unwrap_throw();
-    }
-
     pub fn set_vertex_data(&mut self, data: &[f32]) {
         self.num_triangles = data.len() / 4;
 
@@ -118,16 +102,37 @@ impl Renderer {
         );
     }
 
-    // four camera: x y z w hmg -> x y z dpth hmg
-    // three camera: x y z hmg -> x y dpth hmg
-    pub fn render(&self, four_camera: nalgebra::Matrix5<f32>, views: Vec<View>) {
+    /// Does not bounds-check texture_coordinate.
+    pub fn set_texture_pixel(&self, texture_coordinate: [usize; 2], color: [u8; 4]) {
+        self.gl.bind_texture(GL::TEXTURE_2D, Some(&self.world_tex));
+        self.gl
+            .tex_sub_image_2d_with_i32_and_i32_and_u32_and_type_and_opt_u8_array(
+                GL::TEXTURE_2D,
+                0,
+                texture_coordinate[0] as i32,
+                texture_coordinate[1] as i32,
+                1,
+                1,
+                GL::RGBA,
+                GL::UNSIGNED_BYTE,
+                Some(&color),
+            )
+            .unwrap_throw();
+    }
+
+    pub fn clear_canvas(&self) {
+        self.gl.clear_color(1., 1., 1., 1.);
+        self.gl.clear(GL::COLOR_BUFFER_BIT);
+    }
+
+    pub fn render(&self, viewport: Viewport, uniforms: Uniforms) {
         // x y z dpth hmg -> x y z w hmg
-        let four_camera_inverse = four_camera.try_inverse().unwrap_throw();
+        let four_camera_inverse = uniforms.four_camera.try_inverse().unwrap_throw();
         let four_camera_pos = four_camera_inverse * nalgebra::Vector5::new(0., 0., 0., -1., 0.);
         let four_camera_pos = four_camera_pos.remove_row(4) * four_camera_pos[4];
 
         // x y z w hmg -> x y z hmg
-        let four_camera_no_depth = four_camera.remove_row(3);
+        let four_camera_no_depth = uniforms.four_camera.remove_row(3);
         let four_camera_no_depth = four_camera_no_depth.as_slice();
 
         self.gl.use_program(Some(&self.program));
@@ -169,57 +174,52 @@ impl Renderer {
             0,
         );
 
-        self.gl.clear_color(1., 1., 1., 1.);
-        self.gl.clear(GL::COLOR_BUFFER_BIT);
-
-        for view in views {
-            self.gl.uniform_matrix4fv_with_f32_array(
-                self.gl
-                    .get_uniform_location(&self.program, "three_camera")
-                    .as_ref(),
-                false,
-                &view.three_camera.as_slice(),
-            );
-
-            // x y dpth hmg -> x y z hmg
-            let three_camera_inverse = view.three_camera.try_inverse().unwrap_throw();
-            let tiny_three_camera_fleeing_step_in_three_screen_coordinates =
-                (three_camera_inverse * nalgebra::Vector4::new(0., 0., 1., 0.)).normalize() * 1e-5;
-            let tiny_three_camera_fleeing_step_in_world_coordinates = four_camera_inverse
-                * tiny_three_camera_fleeing_step_in_three_screen_coordinates.insert_row(3, 0.);
-
-            self.gl.uniform4f(
-                self.gl
-                    .get_uniform_location(
-                        &self.program,
-                        "tiny_three_camera_fleeing_step_in_world_coordinates_a",
-                    )
-                    .as_ref(),
-                tiny_three_camera_fleeing_step_in_world_coordinates[0],
-                tiny_three_camera_fleeing_step_in_world_coordinates[1],
-                tiny_three_camera_fleeing_step_in_world_coordinates[2],
-                tiny_three_camera_fleeing_step_in_world_coordinates[3],
-            );
-
-            self.gl.uniform1f(
-                self.gl
-                    .get_uniform_location(
-                        &self.program,
-                        "tiny_three_camera_fleeing_step_in_world_coordinates_b",
-                    )
-                    .as_ref(),
-                tiny_three_camera_fleeing_step_in_world_coordinates[4],
-            );
-
-            self.gl.viewport(
-                view.viewport_start[0],
-                view.viewport_start[1],
-                view.viewport_size[0],
-                view.viewport_size[1],
-            );
+        self.gl.uniform_matrix4fv_with_f32_array(
             self.gl
-                .draw_arrays(GL::TRIANGLES, 0, self.num_triangles as i32);
-        }
+                .get_uniform_location(&self.program, "three_camera")
+                .as_ref(),
+            false,
+            &uniforms.three_camera.as_slice(),
+        );
+
+        // x y dpth hmg -> x y z hmg
+        let three_camera_inverse = uniforms.three_camera.try_inverse().unwrap_throw();
+        let tiny_three_camera_fleeing_step_in_three_screen_coordinates =
+            (three_camera_inverse * nalgebra::Vector4::new(0., 0., 1., 0.)).normalize() * 1e-5;
+        let tiny_three_camera_fleeing_step_in_world_coordinates = four_camera_inverse
+            * tiny_three_camera_fleeing_step_in_three_screen_coordinates.insert_row(3, 0.);
+
+        self.gl.uniform4f(
+            self.gl
+                .get_uniform_location(
+                    &self.program,
+                    "tiny_three_camera_fleeing_step_in_world_coordinates_a",
+                )
+                .as_ref(),
+            tiny_three_camera_fleeing_step_in_world_coordinates[0],
+            tiny_three_camera_fleeing_step_in_world_coordinates[1],
+            tiny_three_camera_fleeing_step_in_world_coordinates[2],
+            tiny_three_camera_fleeing_step_in_world_coordinates[3],
+        );
+
+        self.gl.uniform1f(
+            self.gl
+                .get_uniform_location(
+                    &self.program,
+                    "tiny_three_camera_fleeing_step_in_world_coordinates_b",
+                )
+                .as_ref(),
+            tiny_three_camera_fleeing_step_in_world_coordinates[4],
+        );
+
+        self.gl.viewport(
+            viewport.start[0],
+            viewport.start[1],
+            viewport.size[0],
+            viewport.size[1],
+        );
+        self.gl
+            .draw_arrays(GL::TRIANGLES, 0, self.num_triangles as i32);
     }
 }
 

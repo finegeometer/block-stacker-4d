@@ -1,10 +1,10 @@
 #![forbid(unsafe_code)]
 
-mod fps;
-
 mod block;
 mod render;
 mod world;
+
+use crate::fps;
 
 use std::cell::RefCell;
 use std::collections::HashSet;
@@ -13,7 +13,7 @@ use std::rc::Rc;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 
-#[wasm_bindgen]
+// #[wasm_bindgen]
 pub fn run() {
     std::panic::set_hook(Box::new(console_error_panic_hook::hook));
 
