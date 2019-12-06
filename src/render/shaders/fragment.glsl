@@ -1,9 +1,6 @@
 #version 300 es
 precision mediump float;
-
-//////////////////////////////////////////////////////////////////////
-/// This file is a format string. As such, all braces are doubled. ///
-//////////////////////////////////////////////////////////////////////
+precision mediump usampler2D;
 
 in vec4 vpos;
 in vec4 v_three_screen_pos;
@@ -18,20 +15,31 @@ uniform vec4 tiny_three_camera_fleeing_step_in_world_coordinates_a;
 uniform float tiny_three_camera_fleeing_step_in_world_coordinates_b;
 
 // Because there isn't a sampler4D
-uniform sampler2D world;
+uniform usampler2D world;
 
-int world_size = {};
+int world_size = 8;
 float render_distance = 20.0;
 
 
-bool get_block(ivec4 pos, out vec4 col) {{
-    if (pos.x < 0 || pos.y < 0 || pos.z < 0 || pos.w < 0 || pos.x >= world_size || pos.y >= world_size || pos.z >= world_size || pos.w >= world_size) {{
-        col = vec4(1.0, 1.0, 1.0, 0.0);
-    }} else {{
-        col = texelFetch(world, ivec2(pos.x + world_size*pos.z, pos.y + world_size*pos.w), 0);
-    }}
-    return col.w > 0.5;
-}}
+vec4 block_color(uint id) {
+    if (id == uint(0)) {
+        return vec4(1., 1., 1., 0.);
+    } else if (id == uint(1)) {
+        return vec4(0.5, 0.5, 0.5, 1.);
+    } else if (id == uint(2)) {
+        return vec4(0.0, 0.8, 0.0, 1.);
+    } else {
+        return vec4(1.0, 0.0, 1.0, 1.0);
+    }
+}
+
+uint get_block(ivec4 pos) {
+    if (pos.x < 0 || pos.y < 0 || pos.z < 0 || pos.w < 0 || pos.x >= world_size || pos.y >= world_size || pos.z >= world_size || pos.w >= world_size) {
+        return uint(0);
+    } else {
+        return texelFetch(world, ivec2(pos.x + world_size*pos.z, pos.y + world_size*pos.w), 0).r;
+    }
+}
 
 
 // Raytrace along the ray from `start` through `end`.
@@ -42,7 +50,7 @@ bool get_block(ivec4 pos, out vec4 col) {{
 // If there is no intersection, return false.
 
 // Note: A translation of this into Rust is in `world.rs`.
-bool intersect_scene(vec4 start, vec4 end, out float t, out vec4 col) {{
+bool intersect_scene(vec4 start, vec4 end, out float t, out vec4 col) {
 
     float t_max = render_distance / length(end - start);
 
@@ -53,57 +61,59 @@ bool intersect_scene(vec4 start, vec4 end, out float t, out vec4 col) {{
     ivec4 current_block = ivec4(floor(start));
 
     t = 0.0;
-    while (t < t_max && !get_block(current_block, col)) {{
-        if (min(next_ts.x, next_ts.y) < min(next_ts.z, next_ts.w)) {{
-            if (next_ts.x < next_ts.y) {{
+    while (t < t_max && get_block(current_block) == uint(0)) {
+        if (min(next_ts.x, next_ts.y) < min(next_ts.z, next_ts.w)) {
+            if (next_ts.x < next_ts.y) {
                 t = next_ts.x;
                 next_ts.x += t_steps.x;
                 current_block.x += block_steps.x;
-            }} else {{
+            } else {
                 t = next_ts.y;
                 next_ts.y += t_steps.y;
                 current_block.y += block_steps.y;
-            }}
-        }} else {{
-            if (next_ts.z < next_ts.w) {{
+            }
+        } else {
+            if (next_ts.z < next_ts.w) {
                 t = next_ts.z;
                 next_ts.z += t_steps.z;
                 current_block.z += block_steps.z;
-            }} else {{
+            } else {
                 t = next_ts.w;
                 next_ts.w += t_steps.w;
                 current_block.w += block_steps.w;
-            }}
-        }}
-    }}
+            }
+        }
+    }
+
+    col = block_color(get_block(current_block));
 
     return t < t_max;
 
-}}
+}
 
 
-void main() {{
+void main() {
     // limit render distance to infinity
-    if (v_three_screen_pos.w < 0.0) {{
+    if (v_three_screen_pos.w < 0.0) {
         discard;
-    }}
+    }
 
     // further limit it to render_distance
-    if (dot(vpos-four_camera_pos, vpos-four_camera_pos) >= render_distance * render_distance) {{
+    if (dot(vpos-four_camera_pos, vpos-four_camera_pos) >= render_distance * render_distance) {
         discard;
-    }}
+    }
 
     vec4 adjusted_pos = (vpos + tiny_three_camera_fleeing_step_in_world_coordinates_a) / (1.0 + tiny_three_camera_fleeing_step_in_world_coordinates_b);
 
     float t;
-    if (intersect_scene(four_camera_pos, adjusted_pos, t, color)) {{
-        if (t < 0.993) {{
+    if (intersect_scene(four_camera_pos, adjusted_pos, t, color)) {
+        if (t < 0.993) {
             // Occluded
             discard;
-        }}
+        }
         color = mix(color, vec4(1.0), 0.8);
-    }} else {{
+    } else {
         // Sky
         color = vec4(0.8, 0.9, 1.0, 1.0);
-    }}
-}}
+    }
+}

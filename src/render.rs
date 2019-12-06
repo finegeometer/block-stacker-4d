@@ -32,7 +32,7 @@ impl Renderer {
                         block[0] as usize + WORLD_SIZE * block[2] as usize,
                         block[1] as usize + WORLD_SIZE * block[3] as usize,
                     ],
-                    world[block].color(),
+                    &world[block],
                 )
             }
         }
@@ -54,8 +54,9 @@ impl Renderer {
     pub fn redo_mesh(&mut self, world: &super::world::World) {
         let mut vertex_data: Vec<f32> = Vec::new();
 
-        fn all_or_nothing(blocks: &[super::block::Block]) -> bool {
-            blocks.iter().all(|b| b.is_transparent()) || blocks.iter().all(|b| !b.is_transparent())
+        fn all_or_nothing(blocks: &[&crate::block::Block]) -> bool {
+            blocks.iter().all(|b| **b == crate::block::BlockName::Air)
+                || blocks.iter().all(|b| **b != crate::block::BlockName::Air)
         }
 
         for i in 0..WORLD_SIZE as isize {
@@ -63,10 +64,10 @@ impl Renderer {
                 for k in 0..=WORLD_SIZE as isize {
                     for l in 0..=WORLD_SIZE as isize {
                         if !all_or_nothing(&[
-                            world[[i, j, k, l]],
-                            world[[i, j, k - 1, l]],
-                            world[[i, j, k, l - 1]],
-                            world[[i, j, k - 1, l - 1]],
+                            &world[[i, j, k, l]],
+                            &world[[i, j, k - 1, l]],
+                            &world[[i, j, k, l - 1]],
+                            &world[[i, j, k - 1, l - 1]],
                         ]) {
                             #[rustfmt::skip]
                                 vertex_data.extend_from_slice(&[
@@ -80,10 +81,10 @@ impl Renderer {
                         }
 
                         if !all_or_nothing(&[
-                            world[[i, k, j, l]],
-                            world[[i, k - 1, j, l]],
-                            world[[i, k, j, l - 1]],
-                            world[[i, k - 1, j, l - 1]],
+                            &world[[i, k, j, l]],
+                            &world[[i, k - 1, j, l]],
+                            &world[[i, k, j, l - 1]],
+                            &world[[i, k - 1, j, l - 1]],
                         ]) {
                             #[rustfmt::skip]
                                 vertex_data.extend_from_slice(&[
@@ -97,10 +98,10 @@ impl Renderer {
                         }
 
                         if !all_or_nothing(&[
-                            world[[k, i, j, l]],
-                            world[[k - 1, i, j, l]],
-                            world[[k, i, j, l - 1]],
-                            world[[k - 1, i, j, l - 1]],
+                            &world[[k, i, j, l]],
+                            &world[[k - 1, i, j, l]],
+                            &world[[k, i, j, l - 1]],
+                            &world[[k - 1, i, j, l - 1]],
                         ]) {
                             #[rustfmt::skip]
                                 vertex_data.extend_from_slice(&[
@@ -114,10 +115,10 @@ impl Renderer {
                         }
 
                         if !all_or_nothing(&[
-                            world[[i, k, l, j]],
-                            world[[i, k - 1, l, j]],
-                            world[[i, k, l - 1, j]],
-                            world[[i, k - 1, l - 1, j]],
+                            &world[[i, k, l, j]],
+                            &world[[i, k - 1, l, j]],
+                            &world[[i, k, l - 1, j]],
+                            &world[[i, k - 1, l - 1, j]],
                         ]) {
                             #[rustfmt::skip]
                                 vertex_data.extend_from_slice(&[
@@ -131,10 +132,10 @@ impl Renderer {
                         }
 
                         if !all_or_nothing(&[
-                            world[[k, i, l, j]],
-                            world[[k - 1, i, l, j]],
-                            world[[k, i, l - 1, j]],
-                            world[[k - 1, i, l - 1, j]],
+                            &world[[k, i, l, j]],
+                            &world[[k - 1, i, l, j]],
+                            &world[[k, i, l - 1, j]],
+                            &world[[k - 1, i, l - 1, j]],
                         ]) {
                             #[rustfmt::skip]
                                 vertex_data.extend_from_slice(&[
@@ -148,10 +149,10 @@ impl Renderer {
                         }
 
                         if !all_or_nothing(&[
-                            world[[k, l, i, j]],
-                            world[[k - 1, l, i, j]],
-                            world[[k, l - 1, i, j]],
-                            world[[k - 1, l - 1, i, j]],
+                            &world[[k, l, i, j]],
+                            &world[[k - 1, l, i, j]],
+                            &world[[k, l - 1, i, j]],
+                            &world[[k - 1, l - 1, i, j]],
                         ]) {
                             #[rustfmt::skip]
                                 vertex_data.extend_from_slice(&[

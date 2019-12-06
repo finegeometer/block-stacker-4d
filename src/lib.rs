@@ -6,6 +6,9 @@ mod block;
 mod render;
 mod world;
 
+#[allow(dead_code)]
+mod new;
+
 use std::cell::RefCell;
 use std::collections::HashSet;
 use std::rc::Rc;
@@ -163,12 +166,7 @@ impl State {
 
                 web_sys::console::log_1(&format!("{:?}", cast_result).into());
                 if let (Some(block), _) = cast_result {
-                    model.set_block(
-                        block,
-                        block::Block::Solid {
-                            color: [0x80, 0x20, 0x20],
-                        },
-                    );
+                    model.set_block(block, block::Block::new(block::BlockName::Stone));
                 }
             }
             Msg::KeyDown(k) => {
@@ -433,24 +431,19 @@ impl Model {
             for j in 0..=5 {
                 for k in 0..=5 {
                     for l in 0..=2 {
-                        model.set_block(
-                            [i, j, k, l],
-                            block::Block::Solid {
-                                color: [i as u8 * 0x33, j as u8 * 0x33, k as u8 * 0x33],
-                            },
-                        );
+                        model.set_block([i, j, k, l], block::Block::new(block::BlockName::Grass));
                     }
                 }
             }
         }
 
         for i in 1..=4 {
-            model.set_block([1, 1, i, 1], block::Block::Air);
-            model.set_block([1, i, 4, 1], block::Block::Air);
-            model.set_block([i, 4, 4, 1], block::Block::Air);
-            model.set_block([4, 4, i, 1], block::Block::Air);
-            model.set_block([4, i, 1, 1], block::Block::Air);
-            model.set_block([i, 1, 1, 1], block::Block::Air);
+            model.set_block([1, 1, i, 1], block::Block::new(block::BlockName::Air));
+            model.set_block([1, i, 4, 1], block::Block::new(block::BlockName::Air));
+            model.set_block([i, 4, 4, 1], block::Block::new(block::BlockName::Air));
+            model.set_block([4, 4, i, 1], block::Block::new(block::BlockName::Air));
+            model.set_block([4, i, 1, 1], block::Block::new(block::BlockName::Air));
+            model.set_block([i, 1, 1, 1], block::Block::new(block::BlockName::Air));
         }
 
         model
@@ -485,7 +478,7 @@ impl Player {
         for i in 0..4 {
             new_position_integer[i] = new_position[i].floor() as isize;
         }
-        if world[new_position_integer].is_transparent() {
+        if world[new_position_integer] == block::BlockName::Air {
             self.position = new_position;
         }
     }
@@ -576,7 +569,7 @@ fn raycast(
     let mut t = 0.0;
 
     while t < t_max {
-        if !world[next_block].is_transparent() {
+        if world[next_block] != block::BlockName::Air {
             return (current_block, Some(next_block));
         }
         current_block = Some(next_block);

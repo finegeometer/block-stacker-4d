@@ -64,13 +64,13 @@ impl GlHandler {
         gl.tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_u8_array(
             GL::TEXTURE_2D,
             0,                                // level
-            GL::RGBA as i32,                  // internal_format
+            GL::R8UI as i32,                  // internal_format
             (WORLD_SIZE * WORLD_SIZE) as i32, // width
             (WORLD_SIZE * WORLD_SIZE) as i32, // height
             0,                                // border
-            GL::RGBA,                         // format
+            GL::RED_INTEGER,                  // format
             GL::UNSIGNED_BYTE,                // type
-            Some(&[0; 4 * WORLD_SIZE * WORLD_SIZE * WORLD_SIZE * WORLD_SIZE]),
+            Some(&[0; WORLD_SIZE * WORLD_SIZE * WORLD_SIZE * WORLD_SIZE]),
         )
         .unwrap_throw();
 
@@ -103,7 +103,7 @@ impl GlHandler {
     }
 
     /// Does not bounds-check texture_coordinate.
-    pub fn set_texture_pixel(&self, texture_coordinate: [usize; 2], color: [u8; 4]) {
+    pub fn set_texture_pixel(&self, texture_coordinate: [usize; 2], block: &crate::block::Block) {
         self.gl.bind_texture(GL::TEXTURE_2D, Some(&self.world_tex));
         self.gl
             .tex_sub_image_2d_with_i32_and_i32_and_u32_and_type_and_opt_u8_array(
@@ -113,9 +113,9 @@ impl GlHandler {
                 texture_coordinate[1] as i32,
                 1,
                 1,
-                GL::RGBA,
+                GL::RED_INTEGER,
                 GL::UNSIGNED_BYTE,
-                Some(&color),
+                Some(&[*(block as &crate::block::BlockName) as u8]),
             )
             .unwrap_throw();
     }
@@ -231,10 +231,7 @@ fn compile_program(gl: &GL) -> web_sys::WebGlProgram {
     web_sys::console::log_1(&gl.get_shader_info_log(&vertex_shader).unwrap_throw().into());
 
     let fragment_shader = gl.create_shader(GL::FRAGMENT_SHADER).unwrap_throw();
-    gl.shader_source(
-        &fragment_shader,
-        &format!(include_str!("shaders/fragment.glsl"), WORLD_SIZE),
-    );
+    gl.shader_source(&fragment_shader, &include_str!("shaders/fragment.glsl"));
     gl.compile_shader(&fragment_shader);
 
     web_sys::console::log_1(
