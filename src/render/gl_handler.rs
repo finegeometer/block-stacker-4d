@@ -103,7 +103,11 @@ impl GlHandler {
     }
 
     /// Does not bounds-check texture_coordinate.
-    pub fn set_texture_pixel(&self, texture_coordinate: [usize; 2], block: &crate::block::Block) {
+    pub fn set_texture_pixel(
+        &self,
+        texture_coordinate: [usize; 2],
+        block: crate::block::BlockName,
+    ) {
         self.gl.bind_texture(GL::TEXTURE_2D, Some(&self.world_tex));
         self.gl
             .tex_sub_image_2d_with_i32_and_i32_and_u32_and_type_and_opt_u8_array(
@@ -115,7 +119,7 @@ impl GlHandler {
                 1,
                 GL::RED_INTEGER,
                 GL::UNSIGNED_BYTE,
-                Some(&[*(block as &crate::block::BlockName) as u8]),
+                Some(&[block as u8]),
             )
             .unwrap_throw();
     }

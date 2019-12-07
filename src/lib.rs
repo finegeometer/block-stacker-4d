@@ -450,7 +450,7 @@ impl Model {
     }
 
     fn set_block(&mut self, coords: [isize; 4], block: block::Block) {
-        self.world[coords] = block;
+        *self.world.get_mut(coords) = block;
         self.render
             .update(&self.world, render::Msg::BlockChanged(coords));
     }
@@ -478,7 +478,7 @@ impl Player {
         for i in 0..4 {
             new_position_integer[i] = new_position[i].floor() as isize;
         }
-        if world[new_position_integer] == block::BlockName::Air {
+        if world.get(new_position_integer) == block::BlockName::Air {
             self.position = new_position;
         }
     }
@@ -569,7 +569,7 @@ fn raycast(
     let mut t = 0.0;
 
     while t < t_max {
-        if world[next_block] != block::BlockName::Air {
+        if world.get(next_block) != block::BlockName::Air {
             return (current_block, Some(next_block));
         }
         current_block = Some(next_block);
