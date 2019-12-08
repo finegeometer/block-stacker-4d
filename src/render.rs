@@ -38,8 +38,8 @@ impl Renderer {
             Msg::PlayerMoved(pos) => {
                 let mut chunk = [0; 4];
                 for i in 0..4 {
-                    chunk[i] =
-                        (pos[i] as isize - RENDER_CHUNKS as isize).div_euclid(CHUNK_SIZE as isize);
+                    chunk[i] = (pos[i] as isize - RENDER_DISTANCE as isize)
+                        .div_euclid(CHUNK_SIZE as isize);
                 }
                 self.change_loaded_region(world, chunk);
             }
