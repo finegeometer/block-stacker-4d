@@ -3,6 +3,7 @@
 mod fps;
 
 mod block;
+mod chunk;
 mod render;
 mod world;
 
@@ -166,7 +167,7 @@ impl State {
 
                 web_sys::console::log_1(&format!("{:?}", cast_result).into());
                 if let (Some(block), _) = cast_result {
-                    model.set_block(block, block::Block::new(block::BlockName::Stone));
+                    model.set_block(block, block::Block::create(block::BlockName::Stone));
                 }
             }
             Msg::KeyDown(k) => {
@@ -254,6 +255,11 @@ impl State {
                 model
                     .player
                     .r#move(movement_vector * dt as f32, &model.world);
+
+                model.render.update(
+                    &model.world,
+                    render::Msg::PlayerMoved(model.player.position.into()),
+                );
             }
 
             if let VrStatus::NotFound { three_camera_rot } = &mut model.vr_status {
@@ -427,24 +433,10 @@ impl Model {
             player: Player::new(),
         };
 
-        for i in 0..=5 {
-            for j in 0..=5 {
-                for k in 0..=5 {
-                    for l in 0..=2 {
-                        model.set_block([i, j, k, l], block::Block::new(block::BlockName::Grass));
-                    }
-                }
-            }
-        }
-
-        for i in 1..=4 {
-            model.set_block([1, 1, i, 1], block::Block::new(block::BlockName::Air));
-            model.set_block([1, i, 4, 1], block::Block::new(block::BlockName::Air));
-            model.set_block([i, 4, 4, 1], block::Block::new(block::BlockName::Air));
-            model.set_block([4, 4, i, 1], block::Block::new(block::BlockName::Air));
-            model.set_block([4, i, 1, 1], block::Block::new(block::BlockName::Air));
-            model.set_block([i, 1, 1, 1], block::Block::new(block::BlockName::Air));
-        }
+        model.render.update(
+            &model.world,
+            render::Msg::PlayerMoved(model.player.position.into()),
+        );
 
         model
     }
@@ -459,7 +451,7 @@ impl Model {
 impl Player {
     fn new() -> Self {
         Self {
-            position: nalgebra::Vector4::new(1.5, 1.5, 1.5, 1.5),
+            position: nalgebra::Vector4::new(1.5, 0.5, 0.5, 1.5),
             horizontal_orientation: nalgebra::UnitQuaternion::identity(),
             vertical_angle: 0.0,
         }

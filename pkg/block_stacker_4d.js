@@ -18,13 +18,13 @@ function addHeapObject(obj) {
     return idx;
 }
 function __wbg_elem_binding0(arg0, arg1, arg2) {
-    wasm.__wbg_function_table.get(41)(arg0, arg1, addHeapObject(arg2));
+    wasm.__wbg_function_table.get(42)(arg0, arg1, addHeapObject(arg2));
 }
 function __wbg_elem_binding1(arg0, arg1, arg2) {
-    wasm.__wbg_function_table.get(41)(arg0, arg1, addHeapObject(arg2));
+    wasm.__wbg_function_table.get(42)(arg0, arg1, addHeapObject(arg2));
 }
 function __wbg_elem_binding2(arg0, arg1, arg2) {
-    wasm.__wbg_function_table.get(45)(arg0, arg1, arg2);
+    wasm.__wbg_function_table.get(46)(arg0, arg1, arg2);
 }
 /**
 */
@@ -384,16 +384,16 @@ function init(module) {
     imports.wbg.__widl_f_delete_vertex_array_WebGL2RenderingContext = function(arg0, arg1) {
         getObject(arg0).deleteVertexArray(getObject(arg1));
     };
-    imports.wbg.__widl_f_tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_u8_array_WebGL2RenderingContext = function(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10) {
+    imports.wbg.__widl_f_tex_image_3d_with_opt_u8_array_WebGL2RenderingContext = function(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11) {
         try {
-            getObject(arg0).texImage2D(arg1 >>> 0, arg2, arg3, arg4, arg5, arg6, arg7 >>> 0, arg8 >>> 0, arg9 === 0 ? undefined : getArrayU8FromWasm(arg9, arg10));
+            getObject(arg0).texImage3D(arg1 >>> 0, arg2, arg3, arg4, arg5, arg6, arg7, arg8 >>> 0, arg9 >>> 0, arg10 === 0 ? undefined : getArrayU8FromWasm(arg10, arg11));
         } catch (e) {
             handleError(e)
         }
     };
-    imports.wbg.__widl_f_tex_sub_image_2d_with_i32_and_i32_and_u32_and_type_and_opt_u8_array_WebGL2RenderingContext = function(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10) {
+    imports.wbg.__widl_f_tex_sub_image_3d_with_opt_u8_array_WebGL2RenderingContext = function(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12) {
         try {
-            getObject(arg0).texSubImage2D(arg1 >>> 0, arg2, arg3, arg4, arg5, arg6, arg7 >>> 0, arg8 >>> 0, arg9 === 0 ? undefined : getArrayU8FromWasm(arg9, arg10));
+            getObject(arg0).texSubImage3D(arg1 >>> 0, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9 >>> 0, arg10 >>> 0, arg11 === 0 ? undefined : getArrayU8FromWasm(arg11, arg12));
         } catch (e) {
             handleError(e)
         }
@@ -650,7 +650,7 @@ function init(module) {
         const ret = wasm.memory;
         return addHeapObject(ret);
     };
-    imports.wbg.__wbindgen_closure_wrapper148 = function(arg0, arg1, arg2) {
+    imports.wbg.__wbindgen_closure_wrapper150 = function(arg0, arg1, arg2) {
         const state = { a: arg0, b: arg1, cnt: 1 };
         const real = (arg0) => {
             state.cnt++;
@@ -659,7 +659,7 @@ function init(module) {
             try {
                 return __wbg_elem_binding1(a, state.b, arg0);
             } finally {
-                if (--state.cnt === 0) wasm.__wbg_function_table.get(42)(a, state.b);
+                if (--state.cnt === 0) wasm.__wbg_function_table.get(43)(a, state.b);
                 else state.a = a;
             }
         }
@@ -668,7 +668,7 @@ function init(module) {
         const ret = real;
         return addHeapObject(ret);
     };
-    imports.wbg.__wbindgen_closure_wrapper149 = function(arg0, arg1, arg2) {
+    imports.wbg.__wbindgen_closure_wrapper151 = function(arg0, arg1, arg2) {
         const state = { a: arg0, b: arg1, cnt: 1 };
         const real = (arg0) => {
             state.cnt++;
@@ -677,7 +677,7 @@ function init(module) {
             try {
                 return __wbg_elem_binding0(a, state.b, arg0);
             } finally {
-                if (--state.cnt === 0) wasm.__wbg_function_table.get(42)(a, state.b);
+                if (--state.cnt === 0) wasm.__wbg_function_table.get(43)(a, state.b);
                 else state.a = a;
             }
         }
@@ -686,7 +686,7 @@ function init(module) {
         const ret = real;
         return addHeapObject(ret);
     };
-    imports.wbg.__wbindgen_closure_wrapper152 = function(arg0, arg1, arg2) {
+    imports.wbg.__wbindgen_closure_wrapper154 = function(arg0, arg1, arg2) {
         const state = { a: arg0, b: arg1, cnt: 1 };
         const real = (arg0) => {
             state.cnt++;
@@ -695,7 +695,7 @@ function init(module) {
             try {
                 return __wbg_elem_binding2(a, state.b, arg0);
             } finally {
-                if (--state.cnt === 0) wasm.__wbg_function_table.get(42)(a, state.b);
+                if (--state.cnt === 0) wasm.__wbg_function_table.get(43)(a, state.b);
                 else state.a = a;
             }
         }

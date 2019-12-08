@@ -24,7 +24,7 @@ impl PartialEq<BlockName> for Block {
 }
 
 impl Block {
-    pub const fn new(block: BlockName) -> Self {
+    pub const fn create(block: BlockName) -> Self {
         Self(block)
     }
 }

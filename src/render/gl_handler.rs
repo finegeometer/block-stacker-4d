@@ -1,4 +1,4 @@
-const WORLD_SIZE: usize = 8;
+use crate::chunk::CHUNK_SIZE;
 
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
@@ -59,25 +59,42 @@ impl GlHandler {
         );
 
         let world_tex = gl.create_texture().unwrap_throw();
-        gl.bind_texture(GL::TEXTURE_2D, Some(&world_tex));
+        gl.bind_texture(GL::TEXTURE_2D_ARRAY, Some(&world_tex));
         gl.pixel_storei(GL::UNPACK_ALIGNMENT, 1);
-        gl.tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_u8_array(
-            GL::TEXTURE_2D,
+        gl.tex_image_3d_with_opt_u8_array(
+            GL::TEXTURE_2D_ARRAY,
             0,                                // level
             GL::R8UI as i32,                  // internal_format
-            (WORLD_SIZE * WORLD_SIZE) as i32, // width
-            (WORLD_SIZE * WORLD_SIZE) as i32, // height
+            (CHUNK_SIZE * CHUNK_SIZE) as i32, // width
+            (CHUNK_SIZE * CHUNK_SIZE) as i32, // height
+            256,                              // depth
             0,                                // border
             GL::RED_INTEGER,                  // format
             GL::UNSIGNED_BYTE,                // type
-            Some(&[0; WORLD_SIZE * WORLD_SIZE * WORLD_SIZE * WORLD_SIZE]),
+            Some(&[0; 256 * CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE]),
         )
         .unwrap_throw();
 
-        gl.tex_parameteri(GL::TEXTURE_2D, GL::TEXTURE_MIN_FILTER, GL::NEAREST as i32);
-        gl.tex_parameteri(GL::TEXTURE_2D, GL::TEXTURE_MAG_FILTER, GL::NEAREST as i32);
-        gl.tex_parameteri(GL::TEXTURE_2D, GL::TEXTURE_WRAP_S, GL::CLAMP_TO_EDGE as i32);
-        gl.tex_parameteri(GL::TEXTURE_2D, GL::TEXTURE_WRAP_T, GL::CLAMP_TO_EDGE as i32);
+        gl.tex_parameteri(
+            GL::TEXTURE_2D_ARRAY,
+            GL::TEXTURE_MIN_FILTER,
+            GL::NEAREST as i32,
+        );
+        gl.tex_parameteri(
+            GL::TEXTURE_2D_ARRAY,
+            GL::TEXTURE_MAG_FILTER,
+            GL::NEAREST as i32,
+        );
+        gl.tex_parameteri(
+            GL::TEXTURE_2D_ARRAY,
+            GL::TEXTURE_WRAP_S,
+            GL::CLAMP_TO_EDGE as i32,
+        );
+        gl.tex_parameteri(
+            GL::TEXTURE_2D_ARRAY,
+            GL::TEXTURE_WRAP_T,
+            GL::CLAMP_TO_EDGE as i32,
+        );
 
         Self {
             gl,
@@ -102,19 +119,43 @@ impl GlHandler {
         );
     }
 
+    pub fn set_texture(&self, which_texture: usize, blocks: &[u8]) {
+        self.gl
+            .bind_texture(GL::TEXTURE_2D_ARRAY, Some(&self.world_tex));
+        self.gl
+            .tex_sub_image_3d_with_opt_u8_array(
+                GL::TEXTURE_2D_ARRAY,
+                0,
+                0,
+                0,
+                which_texture as i32,
+                (CHUNK_SIZE * CHUNK_SIZE) as i32,
+                (CHUNK_SIZE * CHUNK_SIZE) as i32,
+                1,
+                GL::RED_INTEGER,
+                GL::UNSIGNED_BYTE,
+                Some(blocks),
+            )
+            .unwrap_throw();
+    }
+
     /// Does not bounds-check texture_coordinate.
     pub fn set_texture_pixel(
         &self,
+        which_texture: usize,
         texture_coordinate: [usize; 2],
         block: crate::block::BlockName,
     ) {
-        self.gl.bind_texture(GL::TEXTURE_2D, Some(&self.world_tex));
         self.gl
-            .tex_sub_image_2d_with_i32_and_i32_and_u32_and_type_and_opt_u8_array(
-                GL::TEXTURE_2D,
+            .bind_texture(GL::TEXTURE_2D_ARRAY, Some(&self.world_tex));
+        self.gl
+            .tex_sub_image_3d_with_opt_u8_array(
+                GL::TEXTURE_2D_ARRAY,
                 0,
                 texture_coordinate[0] as i32,
                 texture_coordinate[1] as i32,
+                which_texture as i32,
+                1,
                 1,
                 1,
                 GL::RED_INTEGER,
@@ -170,7 +211,8 @@ impl GlHandler {
             four_camera_no_depth[19],
         );
 
-        self.gl.bind_texture(GL::TEXTURE_2D, Some(&self.world_tex));
+        self.gl
+            .bind_texture(GL::TEXTURE_2D_ARRAY, Some(&self.world_tex));
         self.gl.uniform1i(
             self.gl
                 .get_uniform_location(&self.program, "world")
@@ -235,7 +277,15 @@ fn compile_program(gl: &GL) -> web_sys::WebGlProgram {
     web_sys::console::log_1(&gl.get_shader_info_log(&vertex_shader).unwrap_throw().into());
 
     let fragment_shader = gl.create_shader(GL::FRAGMENT_SHADER).unwrap_throw();
-    gl.shader_source(&fragment_shader, &include_str!("shaders/fragment.glsl"));
+    gl.shader_source(
+        &fragment_shader,
+        &format!(
+            include_str!("shaders/fragment.glsl"),
+            CHUNK_SIZE,
+            super::RENDER_CHUNKS,
+            super::RENDER_DISTANCE,
+        ),
+    );
     gl.compile_shader(&fragment_shader);
 
     web_sys::console::log_1(
