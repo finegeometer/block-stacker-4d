@@ -76,6 +76,14 @@ enum VrStatus {
     Presenting(web_sys::VrDisplay),
 }
 
+impl VrStatus {
+    fn not_found() -> Self {
+        VrStatus::NotFound {
+            three_camera_rot: nalgebra::UnitQuaternion::new(nalgebra::Vector3::new(0., 0.5, 0.)),
+        }
+    }
+}
+
 impl State {
     fn new() -> Self {
         let out = Self(Rc::new(RefCell::new(Model::new())));
@@ -96,9 +104,7 @@ impl State {
                     &"WebVR is not supported by this browser, on this computer.".into(),
                 );
 
-                model.vr_status = VrStatus::NotFound {
-                    three_camera_rot: nalgebra::UnitQuaternion::identity(),
-                };
+                model.vr_status = VrStatus::not_found()
             }
 
             out.event_listener(&model.canvas, "mousedown", |_| Msg::Click);
@@ -193,9 +199,7 @@ impl State {
 
             Msg::GotVRDisplays(vr_displays) => {
                 if vr_displays.length() == 0 {
-                    model.vr_status = VrStatus::NotFound {
-                        three_camera_rot: nalgebra::UnitQuaternion::identity(),
-                    };
+                    model.vr_status = VrStatus::not_found()
                 } else {
                     model.vr_status = VrStatus::Known(vr_displays.get(0).dyn_into().unwrap_throw());
                 }
@@ -247,10 +251,10 @@ impl State {
                     movement_vector += nalgebra::Vector4::x();
                 }
                 if model.keys.contains("q") {
-                    movement_vector += nalgebra::Vector4::y();
+                    movement_vector -= nalgebra::Vector4::y();
                 }
                 if model.keys.contains("e") {
-                    movement_vector -= nalgebra::Vector4::y();
+                    movement_vector += nalgebra::Vector4::y();
                 }
                 model
                     .player
@@ -451,7 +455,7 @@ impl Model {
 impl Player {
     fn new() -> Self {
         Self {
-            position: nalgebra::Vector4::new(1.5, 0.5, 0.5, 1.5),
+            position: nalgebra::Vector4::new(0.5, 0.5, 0.5, 0.5),
             horizontal_orientation: nalgebra::UnitQuaternion::identity(),
             vertical_angle: 0.0,
         }

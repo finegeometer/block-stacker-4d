@@ -70,11 +70,15 @@ pub fn chunk_position(coords: [isize; 4]) -> ([isize; 4], [isize; 4]) {
 }
 
 fn generate_block(block: [isize; 4]) -> Block {
-    if block[0] == 0 && block[1] == 0 {
-        Block::create(BlockName::Grass)
-    } else if block[2] == 0 && block[3] == 0 {
-        Block::create(BlockName::Stone)
-    } else {
-        Block::create(BlockName::Air)
+    match block {
+        [-1..=3, 0, 0, 0]
+        | [3, 0..=3, 0, 0]
+        | [3, 3, 0..=3, 0]
+        | [0..=3, 3, 3, 0]
+        | [0, 0..=3, 3, 0]
+        | [0, 0, 0..=3, 0] => Block::create(BlockName::Air),
+        [-1..=4, -1..=4, -1..=4, -1..=0] => Block::create(BlockName::Stone),
+        [-1..=4, -1..=4, -1..=4, 1] => Block::create(BlockName::Grass),
+        _ => Block::create(BlockName::Air),
     }
 }
